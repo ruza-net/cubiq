@@ -6,6 +6,10 @@ use std::collections::{ HashSet, HashMap, BTreeSet };
 pub type EqualityClass<X> = BTreeSet<X>;
 
 
+trait EqualityChecker<X> {
+    fn equal(&self, lhs: &X, rhs: &X) -> bool;
+}
+
 #[derive(Debug, Clone)]
 pub struct Context {
     parent: Option<NonNull<Self>>,
@@ -58,6 +62,8 @@ impl Context {
     // TODO: Typecheck
     //
     pub fn make_func(&self, arg: Option<String>, source: syn::MaybeType, target: syn::Open<syn::MaybeType>) -> Option<syn::Type> {
+        if arg.as_ref().map(|arg_name| self.equal(&source, target.bound.get(arg_name).unwrap())).unwrap_or(true) {
+
             Some(syn::Type::Func(
                 arg,
                 Box::new(source),
@@ -66,5 +72,16 @@ impl Context {
                     body: Box::new(target.body)
                 },
             ))
+
+        } else {
+            None
+        }
+    }
+}
+
+
+impl EqualityChecker<syn::MaybeType> for Context {
+    fn equal(&self, lhs: &syn::MaybeType, rhs: &syn::MaybeType) -> bool {
+        unimplemented!()
     }
 }
