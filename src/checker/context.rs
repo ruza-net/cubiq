@@ -57,7 +57,14 @@ impl Context {
 
     // TODO: Typecheck
     //
-    pub fn make_func(&self, source: syn::MaybeType, target: syn::Open<syn::MaybeType>) -> syn::Type {
-        syn::Type::Func(Box::new(source), syn::Open { bound: target.bound, body: Box::new(target.body) })
+    pub fn make_func(&self, arg: Option<String>, source: syn::MaybeType, target: syn::Open<syn::MaybeType>) -> Option<syn::Type> {
+            Some(syn::Type::Func(
+                arg,
+                Box::new(source),
+                syn::Open {
+                    bound: target.bound,
+                    body: Box::new(target.body)
+                },
+            ))
     }
 }

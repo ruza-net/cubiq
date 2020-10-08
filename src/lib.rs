@@ -131,6 +131,7 @@ mod type_parse_tests {
     fn func_simple() {
         let ast =
             Type::Func(
+                None,
                 Box::new(Type::Universe(1).into()),
                 Box::new(MaybeType::from(Type::Universe(0))).into(),
             );
@@ -142,11 +143,14 @@ mod type_parse_tests {
     fn func_complex() {
         let ast =
             Type::Func(
+                None,
                 Box::new(Type::Func(
+                    None,
                     Box::new(Type::Universe(1).into()),
                     Box::new(MaybeType::from(Type::Universe(123))).into(),
                 ).into()),
                 Box::new(MaybeType::from(Type::Func(
+                    None,
                     Box::new(Type::Universe(321).into()),
                     Box::new(MaybeType::from(Type::Universe(0))).into(),
                 ))).into(),
@@ -159,6 +163,7 @@ mod type_parse_tests {
     fn bindings() {
         let ast =
             Type::Pair(
+                Some("x".to_string()),
                 Box::new(Type::Universe(1).into()),
                 Open {
                     bound: {

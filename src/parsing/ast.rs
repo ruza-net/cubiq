@@ -15,8 +15,8 @@ pub type OpenType = Open<Type>;
 pub enum Type {
     Universe(usize),
 
-    Func(Box<MaybeType>, Open<Box<MaybeType>>),
-    Pair(Box<MaybeType>, Open<Box<MaybeType>>),
+    Func(Option<String>, Box<MaybeType>, Open<Box<MaybeType>>),
+    Pair(Option<String>, Box<MaybeType>, Open<Box<MaybeType>>),
 }
 
 // Syntax element which isn't reduced and has an unknown type.

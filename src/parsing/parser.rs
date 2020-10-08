@@ -33,6 +33,7 @@ macro_rules! parse_dep_ty {
                     ))(res)?;
 
                 Ok((res, $variant(
+                    Some(bound.clone()),
                     Box::new(source.clone()),
                     Open {
                         bound: { let mut tmp = HashMap::new(); tmp.insert(bound, source); tmp },
@@ -47,7 +48,7 @@ macro_rules! parse_dep_ty {
                         atomic![tag(stringify![$op])],
                         context($range, cut(parse_maybe_type)),
                     )),
-                    |(source, _, target)| $variant(Box::new(source), Box::new(target).into()),
+                    |(source, _, target)| $variant(None, Box::new(source), Box::new(target).into()),
                 )(i)
             }
         }
