@@ -1,4 +1,4 @@
-use crate::syntax as syn;
+use crate::ast as syn;
 
 use std::ptr::NonNull;
 use std::collections::{ HashSet, HashMap, BTreeSet };

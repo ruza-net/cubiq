@@ -1,10 +1,9 @@
 extern crate nom;
 
-mod ast;
 mod checker;
-pub mod parsing;
+mod parsing;
 
-pub use ast::syntax;
+pub use parsing::ast;
 pub use checker::context;
 
 
@@ -21,8 +20,8 @@ macro_rules! assert_parse {
 
 #[cfg(test)]
 mod term_parse_tests {
-    use super::parsing::*;
-    use super::syntax::*;
+    use super::parsing::parser::*;
+    use super::ast::*;
 
     #[test]
     fn identifiers() {
@@ -118,8 +117,8 @@ mod term_parse_tests {
 
 #[cfg(test)]
 mod type_parse_tests {
-    use super::syntax::*;
-    use super::parsing::*;
+    use super::parsing::parser::*;
+    use super::ast::*;
 
     use std::collections::HashMap;
 
@@ -177,8 +176,8 @@ mod type_parse_tests {
 
 #[cfg(test)]
 mod misc_parse_tests {
-    use super::syntax::*;
-    use super::parsing::*;
+    use super::parsing::parser::*;
+    use super::ast::*;
 
     #[test]
     fn parentheses() {
