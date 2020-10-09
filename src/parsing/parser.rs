@@ -163,14 +163,14 @@ fn parse_call(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     Ok((res, Opaque::Call(Box::new(lam), Box::new(arg))))
 }
 
-fn parse_lambda(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
+fn parse_lambda(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     map(
         tuple((
             parse_ident,
             tag("=>"),
             parse_term,
         )),
-        |(arg_name, _, body)| Term::Lambda(arg_name.to_string(), Box::new(body)),
+        |(arg_name, _, body)| MaybeTerm::Lambda(arg_name.to_string(), Box::new(body)),
     )(i)
 }
 
@@ -197,7 +197,7 @@ fn _parse_opaque(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
 ///
 pub fn parse_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
     alt((
-        parse_lambda,
+        into![parse_lambda],
         into![_parse_type],
         into![_parse_opaque],
         enclosed![parse_term],

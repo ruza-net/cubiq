@@ -19,14 +19,14 @@ pub enum Type {
     Pair(Option<String>, Box<MaybeType>, Open<Box<MaybeType>>),
 }
 
-// Syntax element which isn't reduced and has an unknown type.
-//
-// NOTE: This in particular excludes lambda expressions and types.
-//
+/// Syntax element which isn't reduced and has an unknown type.
+///
+/// NOTE: This in particular excludes lambda expressions and types.
+///
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Opaque {
     Var(String),
-    Call(Box<Term>, Box<Term>),
+    Call(Box<MaybeTerm>, Box<Term>),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -36,11 +36,18 @@ pub enum MaybeType {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum MaybeTerm {
+    Lambda(String, Box<Term>),
+    Opaque(Opaque),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Term {
     Type(Type),
     Lambda(String, Box<Term>),
     Opaque(Opaque),
 }
+
 
 impl From<Type> for Term {
     fn from(ty: Type) -> Self {
@@ -52,9 +59,31 @@ impl From<Opaque> for Term {
         Term::Opaque(o)
     }
 }
+impl From<MaybeType> for Term {
+    fn from(o: MaybeType) -> Self {
+        match o {
+            MaybeType::Type(ty) => Term::Type(ty),
+            MaybeType::Opaque(o) => Term::Opaque(o),
+        }
+    }
+}
+impl From<MaybeTerm> for Term {
+    fn from(o: MaybeTerm) -> Self {
+        match o {
+            MaybeTerm::Lambda(arg_name, body) => Term::Lambda(arg_name, body),
+            MaybeTerm::Opaque(o) => Term::Opaque(o),
+        }
+    }
+}
+
 impl<S: ToString> From<S> for Term {
     fn from(s: S) -> Self {
         Term::Opaque(Opaque::Var(s.to_string()))
+    }
+}
+impl<S: ToString> From<S> for MaybeTerm {
+    fn from(s: S) -> Self {
+        MaybeTerm::Opaque(Opaque::Var(s.to_string()))
     }
 }
 impl<S: ToString> From<S> for Opaque {
@@ -71,6 +100,11 @@ impl From<Type> for MaybeType {
 impl From<Opaque> for MaybeType {
     fn from(o: Opaque) -> Self {
         MaybeType::Opaque(o)
+    }
+}
+impl From<Opaque> for MaybeTerm {
+    fn from(o: Opaque) -> Self {
+        MaybeTerm::Opaque(o)
     }
 }
 

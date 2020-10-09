@@ -38,8 +38,8 @@ mod term_parse_tests {
     fn call_simple() {
         let ast =
             Opaque::Call(
-                Box::new(Term::Opaque(Opaque::Var("a".to_string()))),
-                Box::new(Term::Opaque(Opaque::Var("b".to_string()))),
+                Box::new("a".into()),
+                Box::new("b".into()),
             );
 
         assert_parse![ parse_opaque("a b") => ast ];
@@ -49,20 +49,20 @@ mod term_parse_tests {
     fn call_complex() {
         let ast =
             Opaque::Call(
-                Box::new(Term::Opaque(Opaque::Call(
-                    Box::new(Term::Opaque(Opaque::Var("a".to_string()))),
+                Box::new(Opaque::Call(
+                    Box::new("a".into()),
                     Box::new(Term::Opaque(Opaque::Call(
-                        Box::new(Term::Opaque(Opaque::Var("b".to_string()))),
-                        Box::new(Term::Opaque(Opaque::Var("c".to_string()))),
+                        Box::new("b".into()),
+                        Box::new("c".into()),
                     ))),
-                ))),
-                Box::new(Term::Opaque(Opaque::Call(
-                    Box::new(Term::Opaque(Opaque::Call(
-                        Box::new(Term::Opaque(Opaque::Var("d".to_string()))),
-                        Box::new(Term::Opaque(Opaque::Var("e".to_string()))),
-                    ))),
-                    Box::new(Term::Opaque(Opaque::Var("f".to_string()))),
-                ))),
+                ).into()),
+                Box::new(Opaque::Call(
+                    Box::new(Opaque::Call(
+                        Box::new("d".into()),
+                        Box::new("e".into()),
+                    ).into()),
+                    Box::new("f".into()),
+                ).into()),
             );
 
         assert_parse![ parse_opaque("(a (b c)) ((d e) f)") => ast ];
@@ -75,8 +75,8 @@ mod term_parse_tests {
                 "x".to_string(),
                 Box::new(Term::Opaque(
                     Opaque::Call(
-                        Box::new(Term::Opaque(Opaque::Var("x".to_string()))),
-                        Box::new(Term::Opaque(Opaque::Var("x".to_string()))),
+                        Box::new("x".into()),
+                        Box::new("x".into()),
                     )
                 )),
             );
@@ -93,20 +93,20 @@ mod term_parse_tests {
                     "y".to_string(),
                     Box::new(Term::Lambda(
                         "z".to_string(),
-                        Box::new(Term::Opaque(
+                        Box::new(
                             Opaque::Call(
-                                Box::new(Term::Lambda(
+                                Box::new(MaybeTerm::Lambda(
                                     "q".to_string(),
-                                    Box::new(Term::Opaque(
+                                    Box::new(
                                         Opaque::Call(
-                                            Box::new(Term::Opaque(Opaque::Var("q".to_string()))),
-                                            Box::new(Term::Opaque(Opaque::Var("z".to_string()))),
-                                        )
-                                    )),
+                                            Box::new("q".into()),
+                                            Box::new("z".into()),
+                                        ).into()
+                                    ),
                                 )),
-                                Box::new(Term::Opaque(Opaque::Var("y".to_string()))),
-                            )
-                        )),
+                                Box::new("y".into()),
+                            ).into()
+                        ),
                     )),
                 )),
             );
