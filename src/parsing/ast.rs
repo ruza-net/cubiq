@@ -9,14 +9,14 @@ pub struct Open<X> {
     pub body: X,
 }
 pub type OpenTerm = Open<Term>;
-pub type OpenType = Open<Type>;
+pub type OpenType = Open<MaybeType>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Type {
     Universe(usize),
 
-    Func(Option<String>, Box<MaybeType>, Open<Box<MaybeType>>),
-    Pair(Option<String>, Box<MaybeType>, Open<Box<MaybeType>>),
+    Func(Option<String>, Box<MaybeType>, Box<OpenType>),
+    Pair(Option<String>, Box<MaybeType>, Box<OpenType>),
 }
 
 /// Syntax element which isn't reduced and has an unknown type.

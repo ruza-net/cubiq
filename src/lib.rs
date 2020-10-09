@@ -133,7 +133,7 @@ mod type_parse_tests {
             Type::Func(
                 None,
                 Box::new(Type::Universe(1).into()),
-                Box::new(MaybeType::from(Type::Universe(0))).into(),
+                Box::new(MaybeType::from(Type::Universe(0)).into()),
             );
 
         assert_parse![ parse_type("type 1 -> type") => ast ];
@@ -147,13 +147,13 @@ mod type_parse_tests {
                 Box::new(Type::Func(
                     None,
                     Box::new(Type::Universe(1).into()),
-                    Box::new(MaybeType::from(Type::Universe(123))).into(),
+                    Box::new(MaybeType::from(Type::Universe(123)).into()),
                 ).into()),
                 Box::new(MaybeType::from(Type::Func(
                     None,
                     Box::new(Type::Universe(321).into()),
-                    Box::new(MaybeType::from(Type::Universe(0))).into(),
-                ))).into(),
+                    Box::new(MaybeType::from(Type::Universe(0)).into()),
+                )).into()),
             );
 
         assert_parse![ parse_type("(type 1 -> type 123) -> type 321 -> type") => ast ];
@@ -165,14 +165,14 @@ mod type_parse_tests {
             Type::Pair(
                 Some("x".to_string()),
                 Box::new(Type::Universe(1).into()),
-                Open {
+                Box::new(Open {
                     bound: {
                         let mut tmp = HashMap::new();
                         tmp.insert("x".to_string(), Type::Universe(1).into());
                         tmp
                     },
-                    body: Box::new(MaybeType::from(Type::Universe(0)))
-                },
+                    body: MaybeType::from(Type::Universe(0))
+                }),
             );
 
         assert_parse![ parse_type("(x: type 1) # type") => ast ];

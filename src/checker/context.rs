@@ -63,14 +63,10 @@ impl Context {
     //
     pub fn make_func(&self, arg: Option<String>, source: syn::MaybeType, target: syn::Open<syn::MaybeType>) -> Option<syn::Type> {
         if arg.as_ref().map(|arg_name| self.equal(&source, target.bound.get(arg_name).unwrap())).unwrap_or(true) {
-
             Some(syn::Type::Func(
                 arg,
                 Box::new(source),
-                syn::Open {
-                    bound: target.bound,
-                    body: Box::new(target.body)
-                },
+                Box::new(target),
             ))
 
         } else {

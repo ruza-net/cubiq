@@ -35,10 +35,10 @@ macro_rules! parse_dep_ty {
                 Ok((res, $variant(
                     Some(bound.clone()),
                     Box::new(source.clone()),
-                    Open {
+                    Box::new(Open {
                         bound: { let mut tmp = HashMap::new(); tmp.insert(bound, source); tmp },
-                        body: Box::new(target),
-                    }
+                        body: target,
+                    }),
                 )))
 
             } else {// ANCHOR: Isn't dependent
@@ -48,7 +48,7 @@ macro_rules! parse_dep_ty {
                         atomic![tag(stringify![$op])],
                         context($range, cut(parse_maybe_type)),
                     )),
-                    |(source, _, target)| $variant(None, Box::new(source), Box::new(target).into()),
+                    |(source, _, target)| $variant(None, Box::new(source), Box::new(target.into())),
                 )(i)
             }
         }
