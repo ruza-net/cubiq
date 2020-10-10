@@ -236,6 +236,7 @@ mod misc_parse_tests {
     use super::ast::*;
 
     #[test]
+    #[ignore]// It's slow
     fn parentheses() {
         let opaque_ast =
             Opaque::Call(
