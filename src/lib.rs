@@ -1,5 +1,6 @@
 extern crate nom;
 
+#[macro_use] mod utils;
 mod checker;
 mod parsing;
 
@@ -112,6 +113,45 @@ mod term_parse_tests {
             );
 
         assert_parse![ parse_term("x => y => z => (q => q z) y") => ast ];
+    }
+
+    #[test]
+    fn refl() {
+        let ast =
+            Term::Refl(
+                Box::new(Opaque::Call(
+                    Box::new("a".into()),
+                    Box::new("b".into()),
+                ).into())
+            );
+
+        assert_parse! { parse_term("refl   [ a  b]  ") => ast }
+    }
+
+    #[test]
+    fn ap() {
+        let ast =
+            Term::PathAction {
+                var: "x".to_string(),
+                out_ty: Box::new(Type::Universe(1).into()),
+                action: Box::new(Open {
+                    bound: map!{ "x".to_string() => Type::Universe(1).into() },
+                    body: "x".into(),
+                }),
+            };
+
+        assert_parse! { parse_term("type 1::ap[x => x]") => ast }
+    }
+
+    #[test]
+    fn stretch() {
+        let ast =
+            Opaque::Call(
+                Box::new(MaybeTerm::ReflStretch(Box::new(Type::Universe(0).into()))),
+                Box::new("P".into()),
+            ).into();
+
+        assert_parse! { parse_term("type::stretch P") => ast }
     }
 }
 

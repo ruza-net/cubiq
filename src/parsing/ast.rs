@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::convert::TryFrom;
 use std::collections::HashMap;
 
@@ -54,6 +53,10 @@ pub enum MaybeType {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MaybeTerm {
     Lambda(String, Box<Term>),
+
+    PathAction { var: String, action: Box<OpenTerm>, out_ty: Box<MaybeType> },// NOTE: A function
+    ReflStretch(Box<MaybeType>),// NOTE: A function
+    Refl(Box<MaybeTerm>),
     Opaque(Opaque),
 }
 
@@ -61,6 +64,10 @@ pub enum MaybeTerm {
 pub enum Term {
     Type(Type),
     Lambda(String, Box<Term>),
+
+    PathAction { var: String, action: Box<OpenTerm>, out_ty: Box<MaybeType> },
+    ReflStretch(Box<MaybeType>),
+    Refl(Box<MaybeTerm>),
     Opaque(Opaque),
 }
 
@@ -90,6 +97,11 @@ impl From<MaybeTerm> for Term {
         match o {
             MaybeTerm::Lambda(arg_name, body) => Term::Lambda(arg_name, body),
             MaybeTerm::Opaque(o) => Term::Opaque(o),
+
+            MaybeTerm::PathAction { var, action, out_ty } => Term::PathAction { var, action, out_ty },
+            MaybeTerm::ReflStretch(ty) => Term::ReflStretch(ty),
+
+            MaybeTerm::Refl(x) => Term::Refl(x),
         }
     }
 }
@@ -140,6 +152,7 @@ impl TryFrom<MaybeTerm> for Opaque {
 
     fn try_from(tm: MaybeTerm) -> Result<Self, Self::Error> {
         match tm {
+            MaybeTerm::Refl(v) => Opaque::try_from(*v),
             MaybeTerm::Opaque(o) => Ok(o),
 
             tm => Err(ConvertError::TermWhereOpaque(tm.into())),
@@ -151,6 +164,7 @@ impl TryFrom<Term> for Opaque {
 
     fn try_from(tm: Term) -> Result<Self, Self::Error> {
         match tm {
+            Term::Refl(v) => Opaque::try_from(*v),
             Term::Opaque(o) => Ok(o),
 
             tm => Err(ConvertError::TermWhereOpaque(tm.into())),

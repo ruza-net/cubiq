@@ -162,15 +162,16 @@ fn parse_call(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
                 into![parse_opaque],
             ))
         ],
-        into![parse_ident],
+        parse_sgl_term,
+        // into![parse_ident],
     ))(i)?;
 
     // ANCHOR: The argument
     //
     let (res, arg) = alt((
         enclosed![parse_term],
+        into![parse_sgl_term],
         into![parse_universe],
-        into![parse_ident],
     ))(res)?;
 
     Ok((res, Opaque::Call(Box::new(lam), Box::new(arg))))
@@ -207,6 +208,71 @@ fn _parse_opaque(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     ))(i)
 }
 
+fn parse_ap(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    map(
+        tuple((
+            parse_sgl_ty,
+            tag("::"),
+            atomic![tag("ap")],
+            tag("["),
+            parse_ident,
+            tag("=>"),
+            parse_term,
+            atomic![tag("]")],
+        )),
+        |(out_ty, _, _, _, var, _, body, _)|
+            MaybeTerm::PathAction {
+                var: var.to_string(),
+                action: Box::new(Open {
+                    bound: { let mut tmp = HashMap::new(); tmp.insert(var.to_string(), out_ty.clone()); tmp },
+                    body,
+                }),
+                out_ty: Box::new(out_ty),
+            },
+    )(i)
+}
+
+fn parse_refl(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    preceded(
+        atomic![tag("refl")],
+        map(
+            tuple((
+                tag("["),
+                parse_maybe_term,
+                atomic![tag("]")],
+            )),
+            |(_, x, _)| MaybeTerm::Refl(Box::new(x)),
+        )
+    )(i)
+}
+
+fn parse_stretch(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    map(
+        tuple((
+            parse_sgl_ty,
+            tag("::"),
+            atomic![tag("stretch")],
+        )),
+        |(ty, _, _)| MaybeTerm::ReflStretch(Box::new(ty)),
+    )(i)
+}
+
+fn parse_sgl_ty(i: &str) -> IResult<&str, MaybeType, VerboseError<&str>> {
+    alt((
+        into![parse_universe],
+        enclosed![parse_atomic_ty],
+    ))(i)
+}
+
+fn parse_sgl_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    alt((
+        into![parse_ap],
+        into![parse_refl],
+        into![parse_stretch],
+        into![parse_ident],
+    ))(i)
+}
+
 fn parse_atomic_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
     alt((
         into![_parse_opaque],
@@ -215,13 +281,27 @@ fn parse_atomic_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
     ))(i)
 }
 
+fn parse_maybe_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    alt((
+        parse_lambda,
+        into![_parse_opaque],
+        parse_ap,
+        parse_refl,
+        parse_stretch,
+        enclosed![parse_maybe_term],
+    ))(i)
+}
+
 /// Parses a term expression: a type, opaque expression or lambda expression.
 ///
 pub fn parse_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
     alt((
         into![parse_lambda],
-        into![_parse_type],
         into![_parse_opaque],
+        into![parse_ap],
+        into![parse_refl],
+        into![parse_stretch],
+        into![_parse_type],
         enclosed![parse_term],
     ))(i)
 }
