@@ -116,6 +116,17 @@ fn parse_universe(i: &str) -> IResult<&str, Type, VerboseError<&str>> {
     )(i)
 }
 
+fn parse_eq(i: &str) -> IResult<&str, Type, VerboseError<&str>> {
+    map(
+        tuple((
+            parse_atomic_term,
+            preceded(preceded(atomic![tag("=")], atomic![tag("(")]), parse_maybe_type),
+            preceded(tag(")"), parse_atomic_term),
+        )),
+        |(x, ty, y)| Type::Eq(Box::new(ty), Box::new(x), Box::new(y)),
+    )(i)
+}
+
 parse_dep_ty! { parse_func_ty, Type::Func, "function domain", "function range"; -> }
 parse_dep_ty! { parse_pair_ty, Type::Pair, "pair domain", "pair range"; # }
 
@@ -182,6 +193,7 @@ fn _parse_type(i: &str) -> IResult<&str, Type, VerboseError<&str>> {
     alt((
         parse_func_ty,
         parse_pair_ty,
+        parse_eq,
         parse_universe,
     ))(i)
 }
@@ -192,6 +204,14 @@ fn _parse_opaque(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     alt((
         parse_call,
         into![parse_ident],
+    ))(i)
+}
+
+fn parse_atomic_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
+    alt((
+        into![_parse_opaque],
+        into![parse_universe],
+        enclosed![parse_term],
     ))(i)
 }
 

@@ -31,6 +31,8 @@ pub enum Type {
 
     Func(Option<String>, Box<MaybeType>, Box<OpenType>),
     Pair(Option<String>, Box<MaybeType>, Box<OpenType>),
+
+    Eq(Box<MaybeType>, Box<Term>, Box<Term>),
 }
 
 /// Syntax element which isn't reduced and has an unknown type.

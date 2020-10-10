@@ -177,6 +177,17 @@ mod type_parse_tests {
 
         assert_parse![ parse_type("(x: type 1) # type") => ast ];
     }
+
+    #[test]
+    fn eq() {
+        let ast = Type::Eq(
+            Box::new(Type::Universe(43).into()),
+            Box::new(Type::Universe(42).into()),
+            Box::new(Type::Universe(1).into()),
+        );
+
+        assert_parse! { parse_type("type 42   =(  type43 )type 1") => ast }
+    }
 }
 
 #[cfg(test)]
