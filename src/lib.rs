@@ -264,3 +264,59 @@ mod misc_parse_tests {
         assert_parse![ parse_term("(((x  =>  (((b ((x))))))))") => term_ast ];
     }
 }
+
+
+#[cfg(test)]
+mod subst_tests {
+    use super::ast::*;
+
+    macro_rules! subst_test {
+        ( ( $src:expr )[ $($old:ident := $new:expr),* ] as $kind:ident ) => {
+            let mut old_ast: $kind = format![$src, $($old = stringify![$old]),*].into_ast().unwrap();
+
+            let subst_str = format![$src, $($old = $new),*];
+
+            let new_ast: $kind = subst_str.into_ast().unwrap();
+            $(
+                let subst_item: $kind = $new.into_ast().unwrap();
+
+                old_ast = old_ast.subst(stringify![$old], subst_item).expect("couldn't substitute");
+            )*
+
+            assert_eq![
+                new_ast,
+                old_ast,
+                "invalid substitution",
+            ];
+        };
+    }
+
+    // Types
+    //
+    #[test]
+    fn func_pair_subst() {
+        subst_test! { ("type 1 -> type # a {b}")[b := "type 42"] as Type }
+    }
+
+    #[test]
+    fn eq_subst() {
+        subst_test! { ("{x} =(type 43) {y}")[x := "type 42", y := "type 3"] as Type }
+    }
+
+    // Terms
+    //
+    #[test]
+    fn lambda_subst() {
+        subst_test! { ("x => x {y}")[y := "type 42"] as Term }
+    }
+
+    #[test]
+    fn lambda_non_subst() {
+        subst_test! { ("(x => x x) {x}")[x := "type 42"] as Term }
+    }
+
+    #[test]
+    fn call_subst() {
+        subst_test! { ("{x} {x}")[x := "(x => (x x) x)"] as Term }
+    }
+}
