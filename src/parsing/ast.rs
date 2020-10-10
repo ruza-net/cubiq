@@ -1,5 +1,19 @@
+use std::str::FromStr;
+use std::convert::TryFrom;
 use std::collections::HashMap;
 
+use nom::error::VerboseError;
+use super::parser::{ parse_term, parse_type, parse_opaque, parse_maybe_type };
+
+pub trait Parse<X> {
+    fn into_ast(&self) -> Result<X, nom::Err<VerboseError<&str>>>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConvertError {
+    TermWhereOpaque(Term),
+    TypeWhereOpaque(Type),
+}
 
 /// Represents an open syntax element.
 ///
@@ -49,6 +63,8 @@ pub enum Term {
 }
 
 
+// Conversions
+//
 impl From<Type> for Term {
     fn from(ty: Type) -> Self {
         Term::Type(ty)
@@ -116,3 +132,68 @@ impl<X> From<X> for Open<X> {
         }
     }
 }
+
+impl TryFrom<MaybeTerm> for Opaque {
+    type Error = ConvertError;
+
+    fn try_from(tm: MaybeTerm) -> Result<Self, Self::Error> {
+        match tm {
+            MaybeTerm::Opaque(o) => Ok(o),
+
+            tm => Err(ConvertError::TermWhereOpaque(tm.into())),
+        }
+    }
+}
+impl TryFrom<Term> for Opaque {
+    type Error = ConvertError;
+
+    fn try_from(tm: Term) -> Result<Self, Self::Error> {
+        match tm {
+            Term::Opaque(o) => Ok(o),
+
+            tm => Err(ConvertError::TermWhereOpaque(tm.into())),
+        }
+    }
+}
+impl TryFrom<MaybeType> for Opaque {
+    type Error = ConvertError;
+
+    fn try_from(tm: MaybeType) -> Result<Self, Self::Error> {
+        match tm {
+            MaybeType::Type(ty) => Err(ConvertError::TypeWhereOpaque(ty)),
+            MaybeType::Opaque(o) => Ok(o),
+        }
+    }
+}
+
+// Parsing
+//
+macro_rules! parsing {
+    ( $class:ident ~ $func:ident ) => (
+        impl Parse<$class> for &'_ str {
+            fn into_ast(&self) -> Result<$class, nom::Err<VerboseError<&str>>> {
+                let (_, ret) = $func(self)?;
+
+                Ok(ret)
+            }
+        }
+        impl Parse<$class> for &'_ String {
+            fn into_ast(&self) -> Result<$class, nom::Err<VerboseError<&str>>> {
+                let (_, ret) = $func(self)?;
+
+                Ok(ret)
+            }
+        }
+        impl Parse<$class> for String {
+            fn into_ast(&self) -> Result<$class, nom::Err<VerboseError<&str>>> {
+                let (_, ret) = $func(self)?;
+
+                Ok(ret)
+            }
+        }
+    );
+}
+parsing! { Type ~ parse_type }
+parsing! { Term ~ parse_term }
+parsing! { MaybeType ~ parse_maybe_type }
+parsing! { Opaque ~ parse_opaque }
