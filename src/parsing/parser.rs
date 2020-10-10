@@ -91,11 +91,13 @@ macro_rules! into {
 }
 
 
+const KEYWORDS: [&str; 4] = ["type", "refl", "ap", "stretch"];
+
 fn parse_ident(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
     atomic![
         verify(
             take_while(|c| '_' == c || c.is_alphanumeric()),
-            |ident: &str| ident != "type" && ident.len() > 0
+            |ident: &str| !KEYWORDS.contains(&ident) && ident.len() > 0
         )
     ](i)
 }
