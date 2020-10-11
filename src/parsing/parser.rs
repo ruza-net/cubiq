@@ -4,7 +4,7 @@ use nom:: {
     branch::alt,
 
     bytes::complete::{ tag, take_while },
-    character::complete::{ space0, digit0 },
+    character::complete::{ space0, space1, digit1 },
 
     combinator::{ cut, map, map_res, verify },
     sequence::{ preceded, tuple },
@@ -103,17 +103,16 @@ fn parse_ident(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
 }
 
 fn parse_universe(i: &str) -> IResult<&str, Type, VerboseError<&str>> {
-    map_res(
-        preceded(atomic![tag("type")], atomic![digit0]),
-        |num: &str| {
-            if num.len() == 0 {
-                Ok(Type::Universe(0))
-
-            } else {
-                num.parse().map(Type::Universe)
-            }
-        }
-    )(i)
+    alt((
+        map_res(
+            preceded(preceded(space0, tag("type")), preceded(space1, atomic![digit1])),
+            |num: &str| num.parse().map(Type::Universe)
+        ),
+        map(
+            atomic![tag("type")],
+            |_| Type::Universe(0),
+        ),
+    ))(i)
 }
 
 fn parse_eq(i: &str) -> IResult<&str, Type, VerboseError<&str>> {

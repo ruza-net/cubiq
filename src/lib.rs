@@ -259,7 +259,7 @@ mod type_parse_tests {
             Box::new(Type::Universe(1).into()),
         );
 
-        assert_parse! { parse_type("type 42   =(  type43 )type 1") => ast }
+        assert_parse! { parse_type("type 42   =(  type  43 ) type 1") => ast }
     }
 }
 
