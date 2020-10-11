@@ -156,14 +156,13 @@ fn parse_call(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     // ANCHOR: The lambda
     //
     let (res, lam) = alt((
+        parse_sgl_term,
         enclosed![
             alt((
                 parse_lambda,
                 into![parse_opaque],
             ))
         ],
-        parse_sgl_term,
-        // into![parse_ident],
     ))(i)?;
 
     // ANCHOR: The argument
@@ -205,6 +204,13 @@ fn _parse_opaque(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     alt((
         parse_call,
         into![parse_ident],
+    ))(i)
+}
+
+fn _parse_opaque_tm(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    alt((
+        into![parse_call],
+        parse_sgl_term,
     ))(i)
 }
 
@@ -257,18 +263,31 @@ fn parse_stretch(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     )(i)
 }
 
+fn parse_induction(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+    map(
+        tuple((
+            parse_sgl_ty,
+            tag("::"),
+            atomic![tag("ind")],
+        )),
+        |(ty, _, _)| MaybeTerm::Induction(Box::new(ty)),
+    )(i)
+}
+
 fn parse_sgl_ty(i: &str) -> IResult<&str, MaybeType, VerboseError<&str>> {
     alt((
         into![parse_universe],
+        into![parse_ident],
         enclosed![parse_atomic_ty],
     ))(i)
 }
 
 fn parse_sgl_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     alt((
-        into![parse_ap],
-        into![parse_refl],
-        into![parse_stretch],
+        parse_ap,
+        parse_refl,
+        parse_stretch,
+        parse_induction,
         into![parse_ident],
     ))(i)
 }
@@ -284,10 +303,7 @@ fn parse_atomic_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
 fn parse_maybe_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     alt((
         parse_lambda,
-        into![_parse_opaque],
-        parse_ap,
-        parse_refl,
-        parse_stretch,
+        into![_parse_opaque_tm],
         enclosed![parse_maybe_term],
     ))(i)
 }
@@ -297,10 +313,7 @@ fn parse_maybe_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
 pub fn parse_term(i: &str) -> IResult<&str, Term, VerboseError<&str>> {
     alt((
         into![parse_lambda],
-        into![_parse_opaque],
-        into![parse_ap],
-        into![parse_refl],
-        into![parse_stretch],
+        into![_parse_opaque_tm],
         into![_parse_type],
         enclosed![parse_term],
     ))(i)

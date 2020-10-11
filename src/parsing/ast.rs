@@ -67,6 +67,9 @@ pub enum MaybeTerm {
     PathAction { var: String, action: Box<OpenTerm>, out_ty: Box<MaybeType> },// NOTE: A function
     ReflStretch(Box<MaybeType>),// NOTE: A function
     Refl(Box<MaybeTerm>),
+
+    Induction(Box<MaybeType>),// NOTE: A function
+
     Opaque(Opaque),
 }
 
@@ -78,6 +81,9 @@ pub enum Term {
     PathAction { var: String, action: Box<OpenTerm>, out_ty: Box<MaybeType> },
     ReflStretch(Box<MaybeType>),
     Refl(Box<MaybeTerm>),
+
+    Induction(Box<MaybeType>),
+
     Opaque(Opaque),
 }
 
@@ -114,6 +120,8 @@ impl<X: Clone> Substitution<X> for Term
             },
             Term::ReflStretch(ty) => Ok(Term::ReflStretch(Box::new(ty.subst(name, val)?))),
             Term::Refl(x) => Ok(Term::Refl(Box::new(x.subst(name, val)?))),
+
+            Term::Induction(ty) => Ok(Term::Induction(Box::new(ty.subst(name, val)?))),
 
             Term::Opaque(x) => Ok(x.subst(name, val)?.into()),
         }
@@ -224,6 +232,7 @@ impl<X: Clone> Substitution<X> for MaybeTerm
             MaybeTerm::ReflStretch(ty) => Ok(MaybeTerm::ReflStretch(Box::new(ty.subst(name, val)?))),
             MaybeTerm::Refl(x) => Ok(MaybeTerm::Refl(Box::new(x.subst(name, val)?))),
 
+            MaybeTerm::Induction(ty) => Ok(MaybeTerm::Induction(Box::new(ty.subst(name, val)?))),
             MaybeTerm::Opaque(o) => {
                 let out = o.subst(name, val)?.into();
 
@@ -237,6 +246,8 @@ impl<X: Clone> Substitution<X> for MaybeTerm
                     Term::ReflStretch(ty) => Ok(MaybeTerm::ReflStretch(ty)),
 
                     Term::Refl(x) => Ok(MaybeTerm::Refl(x)),
+
+                    Term::Induction(ty) => Ok(MaybeTerm::Induction(ty)),
 
                     Term::Opaque(o) => Ok(MaybeTerm::Opaque(o)),
                 }
@@ -462,6 +473,7 @@ convert_struct! {
         Opaque(o),
         ReflStretch(ty),
         Refl(x),
+        Induction(ty)
         | PathAction { var, action, out_ty }
     } => Term
 }

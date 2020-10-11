@@ -153,6 +153,39 @@ mod term_parse_tests {
 
         assert_parse! { parse_term("type::stretch P") => ast }
     }
+
+    #[test]
+    fn induction() {
+        let ast =
+            Term::Induction(Box::new("N".into()));
+
+        assert_parse! { parse_term("N::ind") => ast }
+    }
+
+    #[test]
+    fn ind_complex() {
+        let ast =
+            Opaque::Call(
+                Box::new(MaybeTerm::Induction(Box::new("N".into()))),
+                Box::new(Type::Universe(0).into()),
+            ).into();
+
+        assert_parse! { parse_term("N::ind type") => ast }
+    }
+
+    #[test]
+    fn stretch_complex() {
+        let ast =
+            Opaque::Call(
+                Box::new(MaybeTerm::ReflStretch(Box::new(Opaque::Call(
+                    Box::new("a".into()),
+                    Box::new("b".into()),
+                ).into()))),
+                Box::new("x".into()),
+            ).into();
+
+        assert_parse! { parse_term("(a b)::stretch x") => ast }
+    }
 }
 
 #[cfg(test)]
