@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 use std::collections::HashMap;
+use std::marker::PhantomData as pd;
 
 use nom::error::VerboseError;
 use super::parser::{ parse_term, parse_type, parse_opaque, parse_maybe_type };
@@ -21,10 +22,7 @@ pub enum SubstError {
     FuncWherePair(Term),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConvertError {
-    TermWhereOpaque(Term),
-    TypeWhereOpaque(Type),
-}
+pub struct ConvertError<Target, Source>(pd<Target>, Source);
 
 /// Represents an open syntax element.
 ///
@@ -392,69 +390,86 @@ impl Substitution<Term> for Opaque {
 
 // Conversions
 //
-impl From<Type> for Term {
-    fn from(ty: Type) -> Self {
-        Term::Type(ty)
-    }
-}
-impl From<Opaque> for Term {
-    fn from(o: Opaque) -> Self {
-        Term::Opaque(o)
-    }
-}
-impl From<MaybeType> for Term {
-    fn from(o: MaybeType) -> Self {
-        match o {
-            MaybeType::Type(ty) => Term::Type(ty),
-            MaybeType::Opaque(o) => Term::Opaque(o),
+macro_rules! convert_str {
+    ( $this:ident ) => (
+        impl<S: ToString> From<S> for $this {
+            fn from(s: S) -> $this {
+                Opaque::Var(s.to_string()).into()
+            }
         }
-    }
+    );
 }
-impl From<MaybeTerm> for Term {
-    fn from(o: MaybeTerm) -> Self {
-        match o {
-            MaybeTerm::Lambda(arg_name, body) => Term::Lambda(arg_name, body),
-            MaybeTerm::Opaque(o) => Term::Opaque(o),
-
-            MaybeTerm::PathAction { var, action, out_ty } => Term::PathAction { var, action, out_ty },
-            MaybeTerm::ReflStretch(ty) => Term::ReflStretch(ty),
-
-            MaybeTerm::Refl(x) => Term::Refl(x),
+macro_rules! convert_straight {
+    ( $src:ident => $this:ident ) => (
+        impl From<$src> for $this {
+            fn from(x: $src) -> $this {
+                $this::$src(x)
+            }
         }
-    }
+    );
 }
 
-impl<S: ToString> From<S> for Term {
-    fn from(s: S) -> Self {
-        Term::Opaque(Opaque::Var(s.to_string()))
-    }
-}
-impl<S: ToString> From<S> for MaybeTerm {
-    fn from(s: S) -> Self {
-        MaybeTerm::Opaque(Opaque::Var(s.to_string()))
-    }
-}
-impl<S: ToString> From<S> for Opaque {
-    fn from(s: S) -> Self {
-        Opaque::Var(s.to_string())
-    }
+macro_rules! convert_struct {
+    ( $src:ident { $( $t_var:ident ( $($t_arg:ident),* ) ),* | $( $s_var:ident { $($s_arg:ident),* } ),* } => $this:ident ) => (
+        impl From<$src> for $this {
+            fn from(x: $src) -> $this {
+                match x {
+                    $(
+                        $src::$t_var($($t_arg),*) => $this::$t_var($($t_arg),*),
+                    )*
+
+                    $(
+                        $src::$s_var{ $($s_arg),* } => $this::$s_var{ $($s_arg),* },
+                    )*
+                }
+            }
+        }
+    );
 }
 
-impl From<Type> for MaybeType {
-    fn from(ty: Type) -> Self {
-        MaybeType::Type(ty)
-    }
+macro_rules! try_convert {
+    ( $src:ident | $($success:ident),* | { $( $t_var:ident ),* } => $this:ident ) => (
+        impl TryFrom<$src> for $this {
+            type Error = ConvertError<$this, $src>;
+
+            fn try_from(x: $src) -> Result<$this, Self::Error> {
+                match x {
+                    $(
+                        $src::$success(x) => Ok(x),
+                    )*
+
+                    $(
+                        $src::$t_var(x) => $this::try_from($src::from(*x)),
+                    )*
+
+                    rest => Err(ConvertError(pd, rest)),
+                }
+            }
+        }
+    );
 }
-impl From<Opaque> for MaybeType {
-    fn from(o: Opaque) -> Self {
-        MaybeType::Opaque(o)
-    }
+
+convert_straight! { Type => Term }
+convert_straight! { Opaque => Term }
+convert_straight! { Type => MaybeType }
+convert_straight! { Opaque => MaybeType }
+convert_straight! { Opaque => MaybeTerm }
+
+convert_struct! { MaybeType { Type(ty), Opaque(o) | } => Term }
+convert_struct! {
+    MaybeTerm {
+        Lambda(arg_name, body),
+        Opaque(o),
+        ReflStretch(ty),
+        Refl(x),
+        | PathAction { var, action, out_ty }
+    } => Term
 }
-impl From<Opaque> for MaybeTerm {
-    fn from(o: Opaque) -> Self {
-        MaybeTerm::Opaque(o)
-    }
-}
+
+convert_str! { Term }
+convert_str! { Opaque }
+convert_str! { MaybeType }
+convert_str! { MaybeTerm }
 
 impl<X> From<X> for Open<X> {
     fn from(x: X) -> Self {
@@ -465,44 +480,13 @@ impl<X> From<X> for Open<X> {
     }
 }
 
-impl TryFrom<MaybeTerm> for Opaque {
-    type Error = ConvertError;
-
-    fn try_from(tm: MaybeTerm) -> Result<Self, Self::Error> {
-        match tm {
-            MaybeTerm::Refl(v) => Opaque::try_from(*v),
-            MaybeTerm::Opaque(o) => Ok(o),
-
-            tm => Err(ConvertError::TermWhereOpaque(tm.into())),
-        }
-    }
-}
-impl TryFrom<Term> for Opaque {
-    type Error = ConvertError;
-
-    fn try_from(tm: Term) -> Result<Self, Self::Error> {
-        match tm {
-            Term::Refl(v) => Opaque::try_from(*v),
-            Term::Opaque(o) => Ok(o),
-
-            tm => Err(ConvertError::TermWhereOpaque(tm.into())),
-        }
-    }
-}
-impl TryFrom<MaybeType> for Opaque {
-    type Error = ConvertError;
-
-    fn try_from(tm: MaybeType) -> Result<Self, Self::Error> {
-        match tm {
-            MaybeType::Type(ty) => Err(ConvertError::TypeWhereOpaque(ty)),
-            MaybeType::Opaque(o) => Ok(o),
-        }
-    }
-}
+try_convert! { MaybeTerm |Opaque| { Refl } => Opaque }
+try_convert! { Term |Opaque| { Refl } => Opaque }
+try_convert! { MaybeType |Opaque| { } => Opaque }
 
 // Parsing
 //
-macro_rules! parsing {
+macro_rules! parse_via {
     ( $class:ident ~ $func:ident ) => (
         impl Parse<$class> for &'_ str {
             fn into_ast(&self) -> Result<$class, nom::Err<VerboseError<&str>>> {
@@ -527,7 +511,7 @@ macro_rules! parsing {
         }
     );
 }
-parsing! { Type ~ parse_type }
-parsing! { Term ~ parse_term }
-parsing! { MaybeType ~ parse_maybe_type }
-parsing! { Opaque ~ parse_opaque }
+parse_via! { Type ~ parse_type }
+parse_via! { Term ~ parse_term }
+parse_via! { MaybeType ~ parse_maybe_type }
+parse_via! { Opaque ~ parse_opaque }
