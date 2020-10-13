@@ -186,6 +186,15 @@ mod term_parse_tests {
 
         assert_parse! { parse_term("(a b)::stretch x") => ast }
     }
+
+    #[test]
+    fn projections() {
+        let ast_1 = Opaque::Proj1(Box::new("a".into()));
+        let ast_2 = Opaque::Proj2(Box::new("a".into()));
+
+        assert_parse! { parse_opaque("a.1") => ast_1 }
+        assert_parse! { parse_opaque("a.2") => ast_2 }
+    }
 }
 
 #[cfg(test)]

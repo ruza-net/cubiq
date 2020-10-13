@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{ VecDeque, HashMap };
 
 use nom:: {
     branch::alt,
@@ -15,6 +15,12 @@ use nom:: {
 
 use crate::ast::*;
 
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+enum ProjKind {
+    Fst,
+    Snd,
+}
 
 macro_rules! parse_dep_ty {
     ( $fn_name:ident , $variant:expr , $domain:expr , $range:expr ; $op:tt ) => {
@@ -202,6 +208,7 @@ fn _parse_type(i: &str) -> IResult<&str, Type, VerboseError<&str>> {
 fn _parse_opaque(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     alt((
         parse_call,
+        parse_proj,
         into![parse_ident],
     ))(i)
 }
@@ -273,6 +280,68 @@ fn parse_induction(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     )(i)
 }
 
+fn parse_proj_tele(i: &str) -> IResult<&str, VecDeque<ProjKind>, VerboseError<&str>> {
+    let (mut res, kind) = map(
+        alt((
+            atomic![tag(".1")],
+            atomic![tag(".2")],
+        )),
+        |t| if t == ".1" { ProjKind::Fst } else { ProjKind::Snd },
+    )(i)?;
+
+    let mut tele = VecDeque::new();
+    tele.push_back(kind);
+
+    loop {
+        if let Ok((new_res, kind)) = map::<_, _, _, VerboseError<_>, _, _>(
+            alt((
+                atomic![tag(".1")],
+                atomic![tag(".2")],
+            )),
+            |t| if t == ".1" { ProjKind::Fst } else { ProjKind::Snd },
+        )(res) {
+            res = new_res;
+            tele.push_back(kind);
+
+        } else {
+            break;
+        }
+    }
+
+    Ok((res, tele))
+}
+
+fn parse_proj(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
+    map(
+        tuple((
+            alt((
+                parse_refl,
+                into![parse_ident],
+                enclosed![parse_opaque],
+            )),
+            parse_proj_tele,
+        )),
+        |(x, mut tele)| {
+            let mut ret =
+                if let ProjKind::Fst = tele.pop_front().unwrap() {
+                    Opaque::Proj1(Box::new(x))
+                } else {
+                    Opaque::Proj2(Box::new(x))
+                };
+
+            for kind in tele {
+                if let ProjKind::Fst = kind {
+                    ret = Opaque::Proj1(Box::new(ret));
+                } else {
+                    ret = Opaque::Proj2(Box::new(ret));
+                }
+            }
+
+            ret
+        },
+    )(i)
+}
+
 fn parse_sgl_ty(i: &str) -> IResult<&str, MaybeType, VerboseError<&str>> {
     alt((
         into![parse_universe],
@@ -287,6 +356,7 @@ fn parse_sgl_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
         into![parse_refl],
         parse_stretch,
         parse_induction,
+        into![parse_proj],
         into![parse_ident],
     ))(i)
 }

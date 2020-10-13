@@ -54,6 +54,9 @@ pub enum Opaque {
     Var(String),
     Refl(Box<MaybeTerm>),
 
+    Proj1(Box<Opaque>),
+    Proj2(Box<Opaque>),
+
     Call(Box<MaybeTerm>, Box<Term>),
 }
 
@@ -287,6 +290,8 @@ impl Substitution<Opaque> for Opaque {
                 }
             },
             Opaque::Refl(x) => Ok(Opaque::Refl(Box::new(x.subst(name, val)?))),
+            Opaque::Proj1(x) => Ok(Opaque::Proj1(Box::new(x.subst(name, val)?))),
+            Opaque::Proj2(x) => Ok(Opaque::Proj2(Box::new(x.subst(name, val)?))),
 
             Opaque::Call(f, a) =>
                 Ok(Opaque::Call(
@@ -319,6 +324,24 @@ impl Substitution<MaybeType> for Opaque {
                 }
             },
 
+            Opaque::Proj1(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeType::Opaque(o) => Ok(Opaque::Proj1(Box::new(o)).into()),
+
+                    MaybeType::Type(ty) => Err(SubstError::TypeWhereTerm(ty)),
+                }
+            },
+            Opaque::Proj2(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeType::Opaque(o) => Ok(Opaque::Proj2(Box::new(o)).into()),
+
+                    MaybeType::Type(ty) => Err(SubstError::TypeWhereTerm(ty)),
+                }
+            },
 
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
@@ -354,6 +377,24 @@ impl Substitution<MaybeTerm> for Opaque {
                 }
             },
 
+            Opaque::Proj1(x) => {
+                let x = x.subst(name, val)?;
+
+                match Opaque::try_from(x) {
+                    Ok(o) => Ok(Opaque::Proj2(Box::new(o)).into()),
+
+                    Err(ConvertError(_, tm)) => Err(SubstError::FuncWherePair(tm.into())),
+                }
+            },
+            Opaque::Proj2(x) => {
+                let x = x.subst(name, val)?;
+
+                match Opaque::try_from(x) {
+                    Ok(o) => Ok(Opaque::Proj2(Box::new(o)).into()),
+
+                    Err(ConvertError(_, tm)) => Err(SubstError::FuncWherePair(tm.into())),
+                }
+            },
 
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
@@ -389,6 +430,24 @@ impl Substitution<Type> for Opaque {
                 }
             },
 
+            Opaque::Proj1(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeType::Opaque(o) => Ok(Opaque::Proj1(Box::new(o)).into()),
+
+                    MaybeType::Type(ty) => Err(SubstError::TypeWhereTerm(ty)),
+                }
+            },
+            Opaque::Proj2(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeType::Opaque(o) => Ok(Opaque::Proj2(Box::new(o)).into()),
+
+                    MaybeType::Type(ty) => Err(SubstError::TypeWhereTerm(ty)),
+                }
+            },
 
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
@@ -421,6 +480,25 @@ impl Substitution<Term> for Opaque {
                     MaybeTerm::Opaque(o) => Ok(Opaque::Refl(Box::new(o.into())).into()),
 
                     tm => Err(SubstError::TermWhereOpaque(tm.into())),
+                }
+            },
+
+            Opaque::Proj1(x) => {
+                let x = x.subst(name, val)?;
+
+                match Opaque::try_from(x) {
+                    Ok(o) => Ok(Opaque::Proj2(Box::new(o)).into()),
+
+                    Err(ConvertError(_, tm)) => Err(SubstError::FuncWherePair(tm.into())),
+                }
+            },
+            Opaque::Proj2(x) => {
+                let x = x.subst(name, val)?;
+
+                match Opaque::try_from(x) {
+                    Ok(o) => Ok(Opaque::Proj2(Box::new(o)).into()),
+
+                    Err(ConvertError(_, tm)) => Err(SubstError::FuncWherePair(tm.into())),
                 }
             },
 
