@@ -20,6 +20,7 @@ pub enum SubstError {
     TypeWhereTerm(Type),
     TermWhereType(Term),
     FuncWherePair(Term),
+    TermWhereOpaque(Term),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConvertError<Target, Source>(pd<Target>, Source);
@@ -51,6 +52,8 @@ pub enum Type {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Opaque {
     Var(String),
+    Refl(Box<MaybeTerm>),
+
     Call(Box<MaybeTerm>, Box<Term>),
 }
 
@@ -66,7 +69,6 @@ pub enum MaybeTerm {
 
     PathAction { var: String, action: Box<OpenTerm>, out_ty: Box<MaybeType> },// NOTE: A function
     ReflStretch(Box<MaybeType>),// NOTE: A function
-    Refl(Box<MaybeTerm>),
 
     Induction(Box<MaybeType>),// NOTE: A function
 
@@ -80,7 +82,6 @@ pub enum Term {
 
     PathAction { var: String, action: Box<OpenTerm>, out_ty: Box<MaybeType> },
     ReflStretch(Box<MaybeType>),
-    Refl(Box<MaybeTerm>),
 
     Induction(Box<MaybeType>),
 
@@ -119,7 +120,6 @@ impl<X: Clone> Substitution<X> for Term
                 Ok(Term::PathAction { var, action, out_ty })
             },
             Term::ReflStretch(ty) => Ok(Term::ReflStretch(Box::new(ty.subst(name, val)?))),
-            Term::Refl(x) => Ok(Term::Refl(Box::new(x.subst(name, val)?))),
 
             Term::Induction(ty) => Ok(Term::Induction(Box::new(ty.subst(name, val)?))),
 
@@ -230,7 +230,6 @@ impl<X: Clone> Substitution<X> for MaybeTerm
                 Ok(MaybeTerm::PathAction { var, action, out_ty })
             },
             MaybeTerm::ReflStretch(ty) => Ok(MaybeTerm::ReflStretch(Box::new(ty.subst(name, val)?))),
-            MaybeTerm::Refl(x) => Ok(MaybeTerm::Refl(Box::new(x.subst(name, val)?))),
 
             MaybeTerm::Induction(ty) => Ok(MaybeTerm::Induction(Box::new(ty.subst(name, val)?))),
             MaybeTerm::Opaque(o) => {
@@ -244,8 +243,6 @@ impl<X: Clone> Substitution<X> for MaybeTerm
                     Term::PathAction { var, action, out_ty } => Ok(MaybeTerm::PathAction { var, action, out_ty }),
 
                     Term::ReflStretch(ty) => Ok(MaybeTerm::ReflStretch(ty)),
-
-                    Term::Refl(x) => Ok(MaybeTerm::Refl(x)),
 
                     Term::Induction(ty) => Ok(MaybeTerm::Induction(ty)),
 
@@ -289,6 +286,7 @@ impl Substitution<Opaque> for Opaque {
                     Ok(Opaque::Var(v_name))
                 }
             },
+            Opaque::Refl(x) => Ok(Opaque::Refl(Box::new(x.subst(name, val)?))),
 
             Opaque::Call(f, a) =>
                 Ok(Opaque::Call(
@@ -311,6 +309,16 @@ impl Substitution<MaybeType> for Opaque {
                     Ok(Opaque::Var(v_name).into())
                 }
             },
+            Opaque::Refl(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeTerm::Opaque(o) => Ok(Opaque::Refl(Box::new(o.into())).into()),
+
+                    tm => Err(SubstError::TermWhereOpaque(tm.into())),
+                }
+            },
+
 
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
@@ -336,6 +344,16 @@ impl Substitution<MaybeTerm> for Opaque {
                     Ok(Opaque::Var(v_name).into())
                 }
             },
+            Opaque::Refl(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeTerm::Opaque(o) => Ok(Opaque::Refl(Box::new(o.into())).into()),
+
+                    tm => Err(SubstError::TermWhereOpaque(tm.into())),
+                }
+            },
+
 
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
@@ -361,6 +379,16 @@ impl Substitution<Type> for Opaque {
                     Ok(Opaque::Var(v_name).into())
                 }
             },
+            Opaque::Refl(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeTerm::Opaque(o) => Ok(Opaque::Refl(Box::new(o.into())).into()),
+
+                    tm => Err(SubstError::TermWhereOpaque(tm.into())),
+                }
+            },
+
 
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
@@ -386,6 +414,16 @@ impl Substitution<Term> for Opaque {
                     Ok(Opaque::Var(v_name).into())
                 }
             },
+            Opaque::Refl(x) => {
+                let x = x.subst(name, val)?;
+
+                match x {
+                    MaybeTerm::Opaque(o) => Ok(Opaque::Refl(Box::new(o.into())).into()),
+
+                    tm => Err(SubstError::TermWhereOpaque(tm.into())),
+                }
+            },
+
             Opaque::Call(f, a) => {
                 let f = f.subst(name, val.clone())?;
 
@@ -472,7 +510,6 @@ convert_struct! {
         Lambda(arg_name, body),
         Opaque(o),
         ReflStretch(ty),
-        Refl(x),
         Induction(ty)
         | PathAction { var, action, out_ty }
     } => Term
@@ -492,8 +529,8 @@ impl<X> From<X> for Open<X> {
     }
 }
 
-try_convert! { MaybeTerm |Opaque| { Refl } => Opaque }
-try_convert! { Term |Opaque| { Refl } => Opaque }
+try_convert! { MaybeTerm |Opaque| { } => Opaque }
+try_convert! { Term |Opaque| { } => Opaque }
 try_convert! { MaybeType |Opaque| { } => Opaque }
 
 // Parsing

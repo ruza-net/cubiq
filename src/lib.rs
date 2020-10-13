@@ -118,12 +118,12 @@ mod term_parse_tests {
     #[test]
     fn refl() {
         let ast =
-            Term::Refl(
+            Opaque::Refl(
                 Box::new(Opaque::Call(
                     Box::new("a".into()),
                     Box::new("b".into()),
                 ).into())
-            );
+            ).into();
 
         assert_parse! { parse_term("refl   [ a  b]  ") => ast }
     }

@@ -237,7 +237,7 @@ fn parse_ap(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     )(i)
 }
 
-fn parse_refl(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
+fn parse_refl(i: &str) -> IResult<&str, Opaque, VerboseError<&str>> {
     preceded(
         atomic![tag("refl")],
         map(
@@ -246,7 +246,7 @@ fn parse_refl(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
                 parse_maybe_term,
                 atomic![tag("]")],
             )),
-            |(_, x, _)| MaybeTerm::Refl(Box::new(x)),
+            |(_, x, _)| Opaque::Refl(Box::new(x)),
         )
     )(i)
 }
@@ -284,7 +284,7 @@ fn parse_sgl_ty(i: &str) -> IResult<&str, MaybeType, VerboseError<&str>> {
 fn parse_sgl_term(i: &str) -> IResult<&str, MaybeTerm, VerboseError<&str>> {
     alt((
         parse_ap,
-        parse_refl,
+        into![parse_refl],
         parse_stretch,
         parse_induction,
         into![parse_ident],
